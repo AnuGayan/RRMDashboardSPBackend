@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package org.wso2.gitissueservice;
+package org.wso2.mprservice;
 
-import com.zaxxer.hikari.HikariDataSource;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -26,12 +25,12 @@ import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.wso2.carbon.datasource.core.api.DataSourceService;
-import org.wso2.carbon.datasource.core.exception.DataSourceException;
+import org.wso2.carbon.config.provider.ConfigProvider;
 import org.wso2.carbon.uiserver.api.App;
 import org.wso2.carbon.uiserver.spi.RestApiProvider;
-import org.wso2.gitissueservice.utils.DataValueHolder;
+import org.wso2.mprservice.internal.DataHolder;
 import org.wso2.msf4j.Microservice;
+
 
 import java.util.HashMap;
 import java.util.Map;
@@ -46,16 +45,16 @@ import java.util.Map;
 public class RRMRestApiProvider implements RestApiProvider {
 
     public static final String DASHBOARD_PORTAL_APP_NAME = "portal";
-    private static final Logger LOGGER = LoggerFactory.getLogger(RestApiProvider.class);
+    private static final Logger logger = LoggerFactory.getLogger(RestApiProvider.class);
 
     @Activate
     protected void activate(BundleContext bundleContext) {
-        LOGGER.debug("{} activated.", this.getClass().getName());
+        logger.debug("{} activated.", this.getClass().getName());
     }
 
     @Deactivate
     protected void deactivate(BundleContext bundleContext) {
-        LOGGER.debug("{} deactivated.", this.getClass().getName());
+        logger.debug("{} deactivated.", this.getClass().getName());
     }
 
     @Override
@@ -65,34 +64,28 @@ public class RRMRestApiProvider implements RestApiProvider {
 
     @Override
     public Map<String, Microservice> getMicroservices(App app) {
-        LOGGER.info("Git Issue Service");
-        Map<String, Microservice> microservices = new HashMap<>(4);
-        microservices.put(GitIssueService.API_CONTEXT_PATH, new GitIssueService());
+
+        logger.info("MPR Service");
+        Map<String, Microservice> microservices = new HashMap<>(1);
         microservices.put(MPRService.API_CONTEXT_PATH, new MPRService());
-        microservices.put(CodeCoverageService.API_CONTEXT_PATH, new CodeCoverageService());
-        microservices.put(DependencySummaryService.API_CONTEXT_PATH, new DependencySummaryService());
         return microservices;
     }
 
     @Reference(
-            name = "org.wso2.carbon.datasource.DataSourceService",
-            service = DataSourceService.class,
-            cardinality = ReferenceCardinality.AT_LEAST_ONE,
+            name = "carbon.config.provider",
+            service = ConfigProvider.class,
+            cardinality = ReferenceCardinality.MANDATORY,
             policy = ReferencePolicy.DYNAMIC,
-            unbind = "unregisterDataSourceService"
+            unbind = "unregisterConfigProvider"
     )
+    protected void setConfigProvider(ConfigProvider configProvider) {
 
-    protected void onDataSourceServiceReady(DataSourceService dataSourceService) {
-        try {
-            HikariDataSource dsObject = (HikariDataSource) dataSourceService.getDataSource("RRMDatasource");
-            DataValueHolder.getInstance().setDataSource(dsObject);
-            LOGGER.info("Data Source object set.");
-        } catch (DataSourceException e) {
-            LOGGER.error("error occurred while fetching the data source.", e);
-        }
+        DataHolder.getInstance().setConfigProvider(configProvider);
     }
 
-    protected void unregisterDataSourceService(DataSourceService dataSourceService) {
-        LOGGER.info("Unregistering data sources sample");
+    protected void unregisterConfigProvider(ConfigProvider configProvider) {
+
+        DataHolder.getInstance().setConfigProvider(null);
     }
+
 }
